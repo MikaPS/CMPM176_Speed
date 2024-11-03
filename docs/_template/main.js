@@ -58,25 +58,30 @@ let shuffleCount;
 let penaltyIndex;
 let penaltyTicks;
 let multiplier;
+let combo = 0; // number of cards the player placed in a row before the AI placed one
 const cardIntervalX = 15;
 const cardRowCount = 5;
 const cardColumnCount = 5;
 
 function update() {
   if (!ticks) {
+    // The 2 cards that are in the middle of the board
     placedCardNumbers = [2, 12];
     placedCards = times(2, (i) => {
       const pos = vec(calcPlacedCardX(i), 0);
       const tPos = vec(pos);
       return { num: placedCardNumbers[i], pos, tPos };
     });
+    // Cards available to the player
     playerCards = times(cardColumnCount * cardRowCount, (i) => {
       const gPos = vec(i % cardColumnCount, floor(i / cardColumnCount));
+      // row 0 gets set cards, random after that
       const num = gPos.y === 0 ? [1, 3, 3, 11, 13][gPos.x] : rndi(1, 14);
       const pos = calcPlayerCardPos(gPos);
       const tPos = vec(pos);
       return { num, pos, tPos, gPos };
     });
+    // Cards available to the bot
     enemyCards = times(cardColumnCount * cardRowCount, (i) => {
       const gPos = vec(i % cardColumnCount, floor(i / cardColumnCount));
       const num = rndi(1, 14);
@@ -94,9 +99,11 @@ function update() {
   }
   shuffleTicks++;
   if (shuffleTicks > 60) {
+    // Check if there vaild cards to place
     let isPlacable = false;
     let isPlayerPlacable = false;
     for (let i = 0; i < cardColumnCount; i++) {
+      // For each of the columns, check if there is a vaild card for the player
       const [pi, cn, ci] = checkPlacedIndex(
         i,
         playerPrevMoveIndex,
@@ -106,6 +113,7 @@ function update() {
         isPlacable = isPlacable = true;
         break;
       }
+      // For each of the columns, check if there is a vaild card for the enemy
       const [epi, ecn, eci] = checkPlacedIndex(
         i,
         enemyPrevMoveIndex,
@@ -116,10 +124,13 @@ function update() {
         break;
       }
     }
+    // If the player has no cards to place, reduce the time befoer the enemy's next move
     if (!isPlayerPlacable) {
       enemyNextMoveTicks *= 0.3;
     }
     shuffleCount++;
+    // If no cards are placeable or nothing happened for a long time,
+    // Generate two new random cards to be in the middle
     if (!isPlacable || shuffleCount > 2) {
       play("powerUp");
       placedCards.forEach((c) => {
@@ -138,9 +149,12 @@ function update() {
     shuffleTicks = 0;
   }
   const pci = floor((input.pos.x - 50) / cardIntervalX + cardColumnCount / 2);
+  // if player pressed on a card
   if (input.isJustPressed) {
     if (pci >= 0 && pci < cardColumnCount) {
+      // attempt to place card
       const pi = placeCard(pci, playerPrevMoveIndex, playerCards);
+      // invalid move, save column and start punishment for 60 ticks
       if (pi < 0) {
         play("hit");
         penaltyIndex = pci;
@@ -148,34 +162,48 @@ function update() {
         targetCenterY += 5;
         multiplier = 1;
         shuffleTicks = shuffleCount = 0;
+        // successful move
       } else {
         play("coin");
         playerPrevMoveIndex = pi;
-        targetCenterY -= 5;
+        // add to the combo count when the player places a card
+        combo++;
+        // if the combo is high enough, move cards higher
+        targetCenterY -= 10;
+        if (combo >= 3) {
+          targetCenterY -= 20;
+        }
         addScore(multiplier, pi === 0 ? 8 : 92, centerY);
         multiplier++;
       }
     }
   }
+  // if it's time for the enemy to make a move
   enemyNextMoveTicks--;
   if (enemyNextMoveTicks < 0) {
     enemyNextMoveTicks = rnd(50, 70) / sqrt(difficulty);
+    // if there's a move to do
     if (enemyNextMoveIndex != null) {
       const [pi, cn, ci] = checkPlacedIndex(
         enemyNextMoveIndex,
         enemyPrevMoveIndex,
         enemyCards
       );
+      // uncsuccesful move
       if (pi < 0) {
         enemyNextMoveTicks *= 3;
-      } else {
+      }
+      // valid move
+      else {
         play("select");
         placeCard(enemyNextMoveIndex, enemyPrevMoveIndex, enemyCards);
         enemyPrevMoveIndex = pi;
         targetCenterY += 5;
         multiplier = 1;
+        combo = 0; // when the enemy places card, reset the the player's combo
       }
     }
+    // loop through all the columns to find a valid move
     enemyNextMoveIndex = undefined;
     let ni = rndi(cardColumnCount);
     for (let i = 0; i < cardColumnCount; i++) {
@@ -190,6 +218,7 @@ function update() {
       ni = wrap(ni + 1, 0, cardColumnCount);
     }
   }
+  // display the gradual scrolling effect
   centerY += (targetCenterY - centerY) * 0.1;
   playerCards.forEach((c) => {
     movePos(c.pos, c.tPos, 0.2);
@@ -218,7 +247,9 @@ function update() {
   if (targetCenterY < 16) {
     targetCenterY += (16 - targetCenterY) * 0.1;
   }
-  if (centerY > 94) {
+  // if you lose
+  // Mika's note: i added the win condition (centerY < 6), wasn't there before
+  if (centerY > 94 || centerY < 6) {
     play("explosion");
     end();
   }
