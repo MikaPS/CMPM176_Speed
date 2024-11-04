@@ -58,16 +58,20 @@ let shuffleCount;
 let penaltyIndex;
 let penaltyTicks;
 let multiplier;
+let restart = true;
 let combo = 0; // number of cards the player placed in a row before the AI placed one
 const cardIntervalX = 15;
 const cardRowCount = 5;
 const cardColumnCount = 5;
+let placedCardsCount = 3;
 
 function update() {
-  if (!ticks) {
+  if (!ticks || restart) {
+    restart = false;
+    combo = 0;
     // The 2 cards that are in the middle of the board
-    placedCardNumbers = [2, 12];
-    placedCards = times(2, (i) => {
+    placedCardNumbers = times(placedCardsCount, (i) => { return i + 1; });
+    placedCards = times(placedCardsCount, (i) => {
       const pos = vec(calcPlacedCardX(i), 0);
       const tPos = vec(pos);
       return { num: placedCardNumbers[i], pos, tPos };
@@ -136,7 +140,7 @@ function update() {
       placedCards.forEach((c) => {
         c.tPos.x = c.pos.x < 50 ? -50 : 150;
       });
-      placedCardNumbers = times(2, () => rndi(1, 14));
+      placedCardNumbers = times(placedCardsCount, () => rndi(1, 14));
       placedCardNumbers.forEach((n, i) => {
         placedCards.push({
           num: n,
@@ -249,9 +253,15 @@ function update() {
   }
   // if you lose
   // Mika's note: i added the win condition (centerY < 6), wasn't there before
-  if (centerY > 94 || centerY < 6) {
+  if (centerY > 94) {
+    // TODO: win condition seperated to allow for leveling
     play("explosion");
     end();
+  }
+
+  if (centerY < 6) {
+    restart = true;
+    placedCardsCount++;
   }
 
   function placeCard(idx, ppi, cards) {
@@ -333,7 +343,7 @@ function update() {
   }
 
   function calcPlacedCardX(i) {
-    return 50 + (i - 0.5) * 25;
+    return 50 + (i / (placedCardsCount - 1) - 0.5) * 45;
   }
 
   function calcCardX(i) {
