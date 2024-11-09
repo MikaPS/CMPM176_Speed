@@ -68,7 +68,7 @@ const cardColumnCount = 5;
 function update() {
   if (!ticks) {
     // The 2 cards that are in the middle of the board
-    placedCardNumbers = [2, 12];
+    placedCardNumbers = [rndi(1, 14), rndi(1, 14)];
     placedCards = times(2, (i) => {
       const pos = vec(calcPlacedCardX(i), 0);
       const tPos = vec(pos);
