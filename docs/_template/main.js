@@ -1,9 +1,11 @@
 title = "CARD Q";
 
 description = `
-[Tap]
+[Tap Column]
  Pull out a card
-`;
+[Tap Edge]
+ Refresh hand
+ `;
 
 characters = [
   `
@@ -75,8 +77,8 @@ function update() {
     // Cards available to the player
     playerCards = times(cardColumnCount * cardRowCount, (i) => {
       const gPos = vec(i % cardColumnCount, floor(i / cardColumnCount));
-      // row 0 gets set cards, random after that
-      const num = gPos.y === 0 ? [1, 3, 3, 11, 13][gPos.x] : rndi(1, 14);
+      // row 0 gets set cards, random after that (Jack's Note: row 0 no longer gets set cards to randomize everything)
+      const num = rndi(1, 14);
       const pos = calcPlayerCardPos(gPos);
       const tPos = vec(pos);
       return { num, pos, tPos, gPos };
@@ -175,6 +177,10 @@ function update() {
         }
         addScore(multiplier, pi === 0 ? 8 : 92, centerY);
         multiplier++;
+      }
+    } else {
+      for (let i = 0; i < 5; i++) {
+        replaceCard(i, playerPrevMoveIndex, playerCards);
       }
     }
   }
@@ -282,6 +288,26 @@ function update() {
     cards.push({ num: rndi(1, 14), pos, tPos, gPos });
     shuffleTicks = shuffleCount = 0;
     return pi;
+  }
+
+  // Jack's note: don't fully know how this works, but removes the top card of a given column. probably inefficient :)
+  function replaceCard(idx, ppi, cards) {
+    const [pi, cn, ci] = checkPlacedIndex(idx, ppi, cards);
+    const c = cards.splice(ci, 1)[0];
+    cards.forEach((c) => {
+      if (c.gPos.x === idx) {
+        c.gPos.y--;
+        c.tPos = 
+          cards === playerCards
+            ? calcPlayerCardPos(c.gPos)
+            : calcEnemyCardPos(c.gPos);
+      }
+    })
+    const gPos = vec(idx, cardRowCount - 1);
+    const pos =
+      cards === playerCards ? calcPlayerCardPos(gPos) : calcEnemyCardPos(gPos);
+    const tPos = vec(pos);
+    cards.push({ num: rndi(1, 14), pos, tPos, gPos });
   }
 
   function checkPlacedIndex(idx, ppi, cards) {
