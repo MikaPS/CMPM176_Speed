@@ -65,11 +65,46 @@ const cardIntervalX = 15;
 const cardRowCount = 5;
 const cardColumnCount = 5;
 
+let placedCardsCount = 2;
+let restartFull = true;
+let restart = true;
+let jumpCoeff = 1.0;
+let aiJumpCoeff = 1.0;
+
+let currentLevel = 1;
+
+let levelupTicks = 0;
+let inLevelUp = false;
+
 function update() {
-  if (!ticks) {
+  if (inLevelUp) {
+    if (levelupTicks > 0) {
+      text("Level Up!", 15, 50);
+      levelupTicks--;
+
+      return;
+    } else {
+      inLevelUp = false;
+    }
+  }
+
+  if (!ticks || restart) {
+    restart = false;
+    if (restartFull) {
+      currentLevel = 1;
+      restartFull = false;
+      score = 0;
+    }
+
+    aiJumpCoeff = calcAiJumpCoeff(currentLevel);
+    jumpCoeff = calcJumpCoeff(currentLevel);
+    placedCardsCount = calcPlacedCardsCount(currentLevel);
+
+    combo = 0;
+
     // The 2 cards that are in the middle of the board
-    placedCardNumbers = [rndi(1, 14), rndi(1, 14)];
-    placedCards = times(2, (i) => {
+    placedCardNumbers = times(placedCardsCount, (i) => { return rndi(1, 14); });
+    placedCards = times(placedCardsCount, (i) => {
       const pos = vec(calcPlacedCardX(i), 0);
       const tPos = vec(pos);
       return { num: placedCardNumbers[i], pos, tPos };
@@ -127,9 +162,11 @@ function update() {
       }
     }
     // If the player has no cards to place, reduce the time befoer the enemy's next move
+    // Andy note: changed this so that it's slower to act again because of the refresh ability
     if (!isPlayerPlacable) {
-      enemyNextMoveTicks *= 0.3;
+      enemyNextMoveTicks *= 0.75;
     }
+
     shuffleCount++;
     // If no cards are placeable or nothing happened for a long time,
     // Generate two new random cards to be in the middle
@@ -138,7 +175,7 @@ function update() {
       placedCards.forEach((c) => {
         c.tPos.x = c.pos.x < 50 ? -50 : 150;
       });
-      placedCardNumbers = times(2, () => rndi(1, 14));
+      placedCardNumbers = times(placedCardsCount, () => rndi(1, 14));
       placedCardNumbers.forEach((n, i) => {
         placedCards.push({
           num: n,
@@ -161,7 +198,7 @@ function update() {
         play("hit");
         penaltyIndex = pci;
         penaltyTicks = 60;
-        targetCenterY += 5;
+        targetCenterY += 5 * aiJumpCoeff;
         multiplier = 1;
         shuffleTicks = shuffleCount = 0;
         // successful move
@@ -171,11 +208,11 @@ function update() {
         // add to the combo count when the player places a card
         combo++;
         // if the combo is high enough, move cards higher
-        targetCenterY -= 10;
+        targetCenterY -= 10 * jumpCoeff;
         if (combo >= 3) {
-          targetCenterY -= 20;
+          targetCenterY -= 20 * jumpCoeff;
         }
-        addScore(multiplier, pi === 0 ? 8 : 92, centerY);
+        addScore(round(calcLevelMult(currentLevel) * multiplier), pi === 0 ? 8 : 92, centerY);
         multiplier++;
       }
     } else {
@@ -204,7 +241,7 @@ function update() {
         play("select");
         placeCard(enemyNextMoveIndex, enemyPrevMoveIndex, enemyCards);
         enemyPrevMoveIndex = pi;
-        targetCenterY += 5;
+        targetCenterY += 5 * aiJumpCoeff;
         multiplier = 1;
         combo = 0; // when the enemy places card, reset the the player's combo
       }
@@ -250,15 +287,32 @@ function update() {
     text("X", calcCardX(penaltyIndex), centerY + 6);
     color("black");
   }
-  if (targetCenterY < 16) {
-    targetCenterY += (16 - targetCenterY) * 0.1;
-  }
+
+
+  // Andy's note: removing this bit so that the game doesnt fight you winning
+  // if (targetCenterY < 16) {
+  //   targetCenterY += (16 - targetCenterY) * 0.1;
+  // }
+
   // if you lose
   // Mika's note: i added the win condition (centerY < 6), wasn't there before
-  if (centerY > 94 || centerY < 6) {
+  // Andy's note: I moved the win condition to allow for leveling.
+  if (centerY > 94) {
     play("explosion");
+    restart = true; // when replay is enabled, some things need to be done to make sure the system restarts properly.
+    restartFull = true;
     end();
   }
+
+  if (centerY < 6) {
+    play("explosion");
+    restart = true;
+    inLevelUp = true;
+    levelupTicks = 50;
+    currentLevel++;
+  }
+
+  text("L" + currentLevel, 3, 10);
 
   function placeCard(idx, ppi, cards) {
     const [pi, cn, ci] = checkPlacedIndex(idx, ppi, cards);
@@ -359,7 +413,10 @@ function update() {
   }
 
   function calcPlacedCardX(i) {
-    return 50 + (i - 0.5) * 25;
+    if (placedCardsCount == 2) {
+      return 50 + (i - 0.5) * 25;
+    }
+    return 50 + (i / (placedCardsCount - 1) - 0.5) * 45;
   }
 
   function calcCardX(i) {
@@ -371,5 +428,24 @@ function update() {
     if (p.distanceTo(tp) < 1) {
       p.set(tp);
     }
+  }
+
+  function calcLevelMult(level) {
+    return sqrt(level);
+  }
+  
+  function calcJumpCoeff(level) {
+    if (level <= 2) { return 1.25 - level / 4.0; }
+    return sqrt(3) / sqrt(level)
+  }
+  
+  function calcAiJumpCoeff(level) {
+    if (level <= 2) { return level / 8.0 + 0.5; }
+    return 1.0 + sqrt(level - 3) / 8.0;
+  }
+  
+  function calcPlacedCardsCount(level) {
+    if (level <= 2) { return 3; }
+    return 2;
   }
 }
