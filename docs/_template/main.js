@@ -1,8 +1,8 @@
 title = "CARD Q";
 
 description = `
-[Tap Column]
- Pull out a card
+[Tap]
+ Play a card
 [Tap Edge]
  Refresh hand
  `;
@@ -61,6 +61,7 @@ let penaltyIndex;
 let penaltyTicks;
 let multiplier;
 let combo = 0; // number of cards the player placed in a row before the AI placed one
+let hoverCards = false
 const cardIntervalX = 15; //Changing all of it 
 const cardRowCount = 5;
 const cardColumnCount = 5;
@@ -188,7 +189,13 @@ function update() {
     }
     shuffleTicks = 0;
   }
+
   const pci = floor((input.pos.x - 50) / cardIntervalX + cardColumnCount / 2);
+  hoverCards = pci >= 0 && pci < cardColumnCount;
+
+  refreshLogo(92);
+  refreshLogo(8);
+
   // if player pressed on a card
   if (input.isJustPressed) {
     if (pci >= 0 && pci < cardColumnCount) {
@@ -314,6 +321,8 @@ function update() {
   }
 
   text("L" + currentLevel, 3, 10);
+
+
 
   function placeCard(idx, ppi, cards) {
     const [pi, cn, ci] = checkPlacedIndex(idx, ppi, cards);
@@ -456,5 +465,17 @@ function update() {
   function calcPlacedCardsCount(level) {
     if (level <= 2) { return 3; }
     return 2;
+  }
+
+  function refreshLogo(xc) {
+    if (hoverCards) {
+      color("blue");
+    } else {
+      color("light_blue");
+    }
+    arc(xc, centerY + 12, 4, 2, 9 * PI / 6, 9 * PI / 3);
+    line(xc-5, centerY + 12, xc - 4, centerY + 10, 1);
+    line(xc-2, centerY + 12, xc - 4, centerY + 10, 1);
+    color("black");
   }
 }
