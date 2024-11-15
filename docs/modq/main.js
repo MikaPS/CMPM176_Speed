@@ -1,4 +1,4 @@
-title = "CARD Q";
+title = "MOD Q";
 
 description = `
 [Tap]
