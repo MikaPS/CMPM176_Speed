@@ -25,7 +25,7 @@ options = {
 };
 
 const numChars = [
-  "",
+  "*",
   "A",
   "2",
   "3",
@@ -39,7 +39,7 @@ const numChars = [
   "J",
   "Q",
   "K",
-];
+]; //Characters used in the cards
 
 /** @type {{num: number, pos: Vector, tPos:Vector, gPos:Vector }[]} */
 let playerCards;
@@ -61,7 +61,7 @@ let penaltyIndex;
 let penaltyTicks;
 let multiplier;
 let combo = 0; // number of cards the player placed in a row before the AI placed one
-const cardIntervalX = 15;
+const cardIntervalX = 15; //Changing all of it 
 const cardRowCount = 5;
 const cardColumnCount = 5;
 
@@ -102,8 +102,9 @@ function update() {
 
     combo = 0;
 
-    // The 2 cards that are in the middle of the board
-    placedCardNumbers = times(placedCardsCount, (i) => { return rndi(1, 14); });
+    //15 possible cards -- get random index
+    placedCardNumbers = times(placedCardsCount, (i) => { return rndi(0, 14); }); //Modified to add card
+    // The 2 cards POSITION that are in the middle of the board
     placedCards = times(placedCardsCount, (i) => {
       const pos = vec(calcPlacedCardX(i), 0);
       const tPos = vec(pos);
@@ -113,7 +114,7 @@ function update() {
     playerCards = times(cardColumnCount * cardRowCount, (i) => {
       const gPos = vec(i % cardColumnCount, floor(i / cardColumnCount));
       // row 0 gets set cards, random after that (Jack's Note: row 0 no longer gets set cards to randomize everything)
-      const num = rndi(1, 14);
+      const num = rndi(0, 14); //Added index for '***' joker
       const pos = calcPlayerCardPos(gPos);
       const tPos = vec(pos);
       return { num, pos, tPos, gPos };
@@ -121,7 +122,7 @@ function update() {
     // Cards available to the bot
     enemyCards = times(cardColumnCount * cardRowCount, (i) => {
       const gPos = vec(i % cardColumnCount, floor(i / cardColumnCount));
-      const num = rndi(1, 14);
+      const num = rndi(0, 14); //added index for '***' joker
       const pos = calcEnemyCardPos(gPos);
       const tPos = vec(pos);
       return { num, pos, tPos, gPos };
@@ -136,7 +137,7 @@ function update() {
   }
   shuffleTicks++;
   if (shuffleTicks > 60) {
-    // Check if there vaild cards to place
+    // Check if there vaild cards to place 
     let isPlacable = false;
     let isPlayerPlacable = false;
     for (let i = 0; i < cardColumnCount; i++) {
@@ -175,7 +176,7 @@ function update() {
       placedCards.forEach((c) => {
         c.tPos.x = c.pos.x < 50 ? -50 : 150;
       });
-      placedCardNumbers = times(placedCardsCount, () => rndi(1, 14));
+      placedCardNumbers = times(placedCardsCount, () => rndi(0, 14));
       placedCardNumbers.forEach((n, i) => {
         placedCards.push({
           num: n,
@@ -339,7 +340,7 @@ function update() {
     const pos =
       cards === playerCards ? calcPlayerCardPos(gPos) : calcEnemyCardPos(gPos);
     const tPos = vec(pos);
-    cards.push({ num: rndi(1, 14), pos, tPos, gPos });
+    cards.push({ num: rndi(0, 14), pos, tPos, gPos });
     shuffleTicks = shuffleCount = 0;
     return pi;
   }
@@ -361,7 +362,7 @@ function update() {
     const pos =
       cards === playerCards ? calcPlayerCardPos(gPos) : calcEnemyCardPos(gPos);
     const tPos = vec(pos);
-    cards.push({ num: rndi(1, 14), pos, tPos, gPos });
+    cards.push({ num: rndi(0, 14), pos, tPos, gPos });
   }
 
   function checkPlacedIndex(idx, ppi, cards) {
@@ -375,7 +376,15 @@ function update() {
     });
     let pi = -1;
     placedCardNumbers.forEach((c, i) => {
-      if (
+      //condition returning, matched index modified to include JOKER at indx 0 
+      if(
+        (cn === 0) &&
+        (ppi === 1 || pi === -1)
+      ){
+        pi = i;
+      }
+      else if (
+        //Checks card has adjacent index disregarding 0 
         (ppi === 1 || pi === -1) &&
         (cn === wrap(c - 1, 1, 14) || cn === wrap(c + 1, 1, 14))
       ) {
